@@ -1,4 +1,5 @@
 const PARTICLE_COUNTS = { streaks: 82, field: 125, reassemble: 72, ticks: 24 };
+      const ZOOM_PHASE_DURATION_MS = 2200;
       const statusCopy = { listening: "listening", responding: "responding", zoom: "expanding", field: "visualizing", reassemble: "reassembling" };
 
       const app = document.getElementById("app");
@@ -328,7 +329,7 @@ const PARTICLE_COUNTS = { streaks: 82, field: 125, reassemble: 72, ticks: 24 };
             createMapPanel(mapLocation);
             setVisualMode("field");
             transitionTimer = null;
-          }, 1250);
+          }, ZOOM_PHASE_DURATION_MS);
           return;
         }
 
@@ -343,7 +344,7 @@ const PARTICLE_COUNTS = { streaks: 82, field: 125, reassemble: 72, ticks: 24 };
             createParticleField();
             setVisualMode("field");
             transitionTimer = null;
-          }, 1250);
+          }, ZOOM_PHASE_DURATION_MS);
           return;
         }
 
