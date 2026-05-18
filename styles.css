@@ -565,7 +565,24 @@
         text-transform: uppercase;
       }
 
-      .map-frame-wrap {
+      
+      .map-controls {
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 20px 0;
+      }
+
+      .map-btn {
+        padding: 8px 12px;
+        letter-spacing: 0.12em;
+      }
+
+      .map-canvas {
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
+.map-frame-wrap {
         position: relative;
         width: 100%;
         height: calc(100% - 75px);
