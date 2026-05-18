@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Firus Voice UI</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <div class="background-glow"></div>
+      <div class="background-grid"></div>
+
+      <section class="stage">
+        <div class="voice-core" id="voiceCore">
+          <div class="core-shell" id="coreShell">
+            <div class="reactive-pulse" id="reactivePulse" hidden></div>
+            <div class="outer-orb-ring"></div>
+            <div class="dashed-ring"></div>
+            <div class="ambient-ring"></div>
+            <div class="scan-line-vertical"></div>
+            <div class="scan-line-horizontal"></div>
+            <div class="soft-glow"></div>
+
+            <div class="inner-core">
+              <div class="sweep-highlight"></div>
+              <div class="inner-rotor"></div>
+              <div class="center-pulse-ring"></div>
+              <div class="center-orb"></div>
+              <div class="brand">
+                <div class="brand-name">FIRUS</div>
+                <div class="brand-status" id="statusLabel">listening</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="command-input" data-command-ui="true">
+        <div class="command-shell">
+          <input id="commandInput" placeholder='Type "show" to enter particle field...' autocomplete="off" />
+          <button class="ghost-button" id="voiceButton" type="button">voice</button>
+          <button class="send-button" id="sendButton" type="button">send</button>
+        </div>
+      </div>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
