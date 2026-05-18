@@ -1,426 +1,140 @@
 const PARTICLE_COUNTS = { streaks: 82, field: 125, reassemble: 72, ticks: 24 };
-      const statusCopy = { listening: "listening", responding: "responding", zoom: "expanding", field: "visualizing", reassemble: "reassembling" };
+const ZOOM_PHASE_DURATION_MS = 2200;
+const statusCopy = { listening: "listening", responding: "responding", zoom: "expanding", field: "visualizing", reassemble: "reassembling" };
 
-      const app = document.getElementById("app");
-      const voiceCore = document.getElementById("voiceCore");
-      const coreShell = document.getElementById("coreShell");
-      const reactivePulse = document.getElementById("reactivePulse");
-      const statusLabel = document.getElementById("statusLabel");
-      const commandInput = document.getElementById("commandInput");
-      const sendButton = document.getElementById("sendButton");
-      const voiceButton = document.getElementById("voiceButton");
+const app = document.getElementById("app");
+const voiceCore = document.getElementById("voiceCore");
+const coreShell = document.getElementById("coreShell");
+const reactivePulse = document.getElementById("reactivePulse");
+const statusLabel = document.getElementById("statusLabel");
+const commandInput = document.getElementById("commandInput");
+const sendButton = document.getElementById("sendButton");
+const voiceButton = document.getElementById("voiceButton");
 
-      let status = "listening";
-      let visualMode = "core";
-      let transitionTimer = null;
-      let isListeningForSpeech = false;
+let status = "listening";
+let visualMode = "core";
+let transitionTimer = null;
+let isListeningForSpeech = false;
+let leafletReady = null;
+let mapController = null;
+let currentUserLocation = null;
 
-      function clearTransitionTimer() {
-        if (transitionTimer !== null) {
-          window.clearTimeout(transitionTimer);
-          transitionTimer = null;
-        }
-      }
+const FOOD_BANK_LOCATIONS = [
+  { name: "Shared Harvest Foodbank", address: "5901 Dixie Highway, Fairfield, OH 45014-4207", phone: "800-352-3663", hours: "Regional food bank contact." },
+  { name: "Freestore Foodbank", address: "112 E Liberty St, Cincinnati, OH 45202", phone: "513-482-4500", hours: "Not listed in source." },
+  { name: "Mid-Ohio Food Collective", address: "3960 Brookham Dr, Grove City, OH 43123", phone: "614-274-7770", hours: "Not listed in source." },
+  { name: "The Foodbank, Inc.", address: "5650 Webster St, Dayton, OH 45414", phone: "937-461-5300", hours: "Not listed in source." },
+  { name: "Fairfield Food Pantry", address: "78 Donald Drive, Fairfield, OH 45014", phone: "513-829-9047", hours: "Mon noon-3 pm; Wed noon-3 pm; Fri noon-3 pm." },
+  { name: "Hamilton Dream Center", address: "725 Campbell Ave, Hamilton, OH 45011", phone: "513-893-2800", hours: "Fri 3 pm-5 pm; 2nd and 3rd Sat 10 am-2 pm." },
+  { name: "Lighthouse Food Pantry", address: "626 Ridgelawn Ave, Hamilton, OH 45013", phone: "513-867-9463", hours: "Tue 5 pm-7 pm; Sat 9:30 am-12:30 pm." },
+  { name: "Faith Community United Methodist", address: "8230 Cox Rd, West Chester, OH 45069", phone: "513-777-9533", hours: "Tue 1 pm-2:30 pm and 6:30 pm-8 pm; Sat 10 am-11:30 am." },
+  { name: "Lebanon Food Pantry", address: "190 New Street, Lebanon, OH 45036", phone: "513-932-3617", hours: "Mon/Wed/Fri 9 am-noon; Wed 6 pm-8 pm." },
+  { name: "Mason Food Pantry", address: "406 Fourth Avenue, Mason, OH 45040", phone: "513-754-0333", hours: "Mon 6:30 pm-7:30 pm; Wed 9:30 am-11 am; Sat 9:30 am-11 am." },
+  { name: "Amelia United Methodist Church", address: "19 E Main St, Amelia, OH 45102", phone: "513-753-6770", hours: "Mon and Wed 11 am-1 pm." },
+  { name: "Inter Parish Ministry", address: "4623 Aicholtz Rd, Cincinnati, OH 45244", phone: "513-561-3932", hours: "Mon/Tue/Thu/Fri 10 am-noon." },
+  { name: "SEM", address: "2020 Beechmont Ave, Cincinnati, OH 45230", phone: "513-231-1412", hours: "By appointment." }
+];
 
-      function createReactivePulse() {
-        reactivePulse.innerHTML = "";
-        for (let i = 0; i < 2; i += 1) {
-          const ring = document.createElement("div");
-          ring.className = "reactive-ring";
-          reactivePulse.appendChild(ring);
-        }
+function clearTransitionTimer() { if (transitionTimer !== null) { window.clearTimeout(transitionTimer); transitionTimer = null; } }
+function updateLabel() { statusLabel.textContent = visualMode === "core" ? statusCopy[status] : statusCopy[visualMode]; }
+function setStatus(nextStatus) { status = nextStatus; coreShell.classList.toggle("responding", status === "responding"); reactivePulse.hidden = !(status === "responding" && visualMode === "core"); updateLabel(); }
+function setVisualMode(nextMode) { visualMode = nextMode; app.classList.toggle("zooming", visualMode === "zoom"); coreShell.classList.toggle("hidden-for-zoom", visualMode === "zoom"); coreShell.classList.toggle("hidden-for-field", visualMode === "field"); coreShell.classList.toggle("reassembling", visualMode === "reassemble"); reactivePulse.hidden = !(status === "responding" && visualMode === "core"); updateLabel(); }
+function toggleVoiceState(event) { if (event.target.closest("[data-command-ui='true'], input, button")) return; if (visualMode !== "core") return; setStatus(status === "responding" ? "listening" : "responding"); }
+function removeLayer(selector) { document.querySelectorAll(selector).forEach((node) => node.remove()); }
 
-        const conic = document.createElement("div");
-        conic.className = "reactive-conic";
-        reactivePulse.appendChild(conic);
+function createReactivePulse() { reactivePulse.innerHTML = ""; for (let i = 0; i < 2; i += 1) { const ring = document.createElement("div"); ring.className = "reactive-ring"; reactivePulse.appendChild(ring);} const conic = document.createElement("div"); conic.className = "reactive-conic"; reactivePulse.appendChild(conic); }
+function createZoomLayer() { removeLayer(".zoom-layer"); const layer = document.createElement("div"); layer.className = "zoom-layer"; layer.innerHTML = '<div class="zoom-flash"></div><div class="zoom-ring"></div><div class="zoom-core-burst"></div><div class="zoom-vignette"></div>'; for (let i=0;i<4;i++){const d=document.createElement("div"); d.className="zoom-depth-ring"; d.style.animationDelay=`${i*0.09}s`; d.style.setProperty("--ring-opacity",`${0.28-i*0.045}`); d.style.setProperty("--ring-scale",`${2.4+i*0.62}`); layer.appendChild(d);} document.body.appendChild(layer); }
 
-        for (let tick = 0; tick < PARTICLE_COUNTS.ticks; tick += 1) {
-          const angle = tick * (360 / PARTICLE_COUNTS.ticks);
-          const holder = document.createElement("div");
-          holder.className = "tick-holder";
-          holder.style.transform = `rotate(${angle}deg)`;
-          const line = document.createElement("div");
-          line.className = tick % 4 === 0 ? "tick major" : "tick minor";
-          line.style.animationDelay = `${tick * 0.035}s`;
-          holder.appendChild(line);
-          reactivePulse.appendChild(holder);
-        }
-      }
+function getSpeechRecognitionConstructor() { return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 
-      function setStatus(nextStatus) {
-        status = nextStatus;
-        coreShell.classList.toggle("responding", status === "responding");
-        reactivePulse.hidden = !(status === "responding" && visualMode === "core");
-        updateLabel();
-      }
+function extractMapLocation(command) {
+  const text = command.trim().toLowerCase(); const original = command.trim();
+  if (text.startsWith("where is ")) return original.slice(9).replace(/[.!?]+$/g, "").trim();
+  if (!text.includes("map")) return "";
+  const prefixes = ["show me a map of ","show me map of ","show map of ","show a map of ","open a map of ","open map of ","map of ","map for ","map to ","map in ","map near ","map around "];
+  for (const prefix of prefixes) if (text.startsWith(prefix)) return original.slice(prefix.length).replace(/[.!?]+$/g, "").trim();
+  return "";
+}
 
-      function setVisualMode(nextMode) {
-        visualMode = nextMode;
-        app.classList.toggle("zooming", visualMode === "zoom");
-        coreShell.classList.toggle("hidden-for-zoom", visualMode === "zoom");
-        coreShell.classList.toggle("hidden-for-field", visualMode === "field");
-        coreShell.classList.toggle("reassembling", visualMode === "reassemble");
-        reactivePulse.hidden = !(status === "responding" && visualMode === "core");
-        commandInput.placeholder = visualMode === "field" ? 'Type "reset" to return to Firus...' : 'Type "show" or "map of Columbus, Ohio"...';
-        updateLabel();
-      }
+function ensureLeaflet() { if (leafletReady) return leafletReady; leafletReady = new Promise((resolve, reject) => { if (window.L) return resolve(window.L); const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css); const js = document.createElement("script"); js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; js.onload = () => resolve(window.L); js.onerror = reject; document.body.appendChild(js);}); return leafletReady; }
+async function geocodeAddress(query) { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`); const data = await res.json(); if (!data?.length) return null; return { lat: Number(data[0].lat), lon: Number(data[0].lon) }; }
+function milesBetween(lat1, lon1, lat2, lon2) { const R = 3958.8; const dLat=(lat2-lat1)*Math.PI/180; const dLon=(lon2-lon1)*Math.PI/180; const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(a)); }
 
-      function updateLabel() {
-        statusLabel.textContent = visualMode === "core" ? statusCopy[status] : statusCopy[visualMode];
-      }
+function setMapMode(is3D) { if (!mapController?.map || !window.L) return; if (mapController.activeLayer) mapController.map.removeLayer(mapController.activeLayer); const url = is3D ? "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"; const opts = is3D ? { maxZoom: 17 } : { subdomains: "abcd", maxZoom: 19 }; mapController.activeLayer = window.L.tileLayer(url, opts).addTo(mapController.map); mapController.is3D = is3D; document.querySelector(".map-status").textContent = is3D ? "3d terrain" : "black map"; }
 
-      function toggleVoiceState(event) {
-        if (event.target.closest("[data-command-ui='true'], input, button")) return;
-        if (visualMode !== "core") return;
-        setStatus(status === "responding" ? "listening" : "responding");
-      }
+async function renderFoodBankMarkers(withinTenMiles) {
+  mapController.markers.forEach((m) => m.remove()); mapController.markers = [];
+  for (const place of FOOD_BANK_LOCATIONS) {
+    const point = await geocodeAddress(place.address); if (!point) continue;
+    if (withinTenMiles && currentUserLocation) {
+      const d = milesBetween(currentUserLocation.lat, currentUserLocation.lon, point.lat, point.lon);
+      if (d > 10) continue;
+    }
+    const marker = window.L.circleMarker([point.lat, point.lon], { radius: 5, color: "#8f8f8f", fillColor: "#7a7a7a", fillOpacity: 0.7 }).addTo(mapController.map);
+    marker.bindPopup(`<strong>${place.name}</strong><br>${place.address}<br>${place.phone}<br>${place.hours}`);
+    mapController.markers.push(marker);
+  }
+  if (mapController.markers.length) mapController.map.fitBounds(window.L.featureGroup(mapController.markers).getBounds().pad(0.2));
+}
 
-      function removeLayer(selector) {
-        document.querySelectorAll(selector).forEach((node) => node.remove());
-      }
+async function createMapPanel(location) {
+  removeLayer(".map-panel");
+  const panel = document.createElement("div"); panel.className = "map-panel";
+  panel.innerHTML = `<div class="map-header"><div><div class="map-kicker">map response</div><div class="map-title">MAP VIEW</div></div><div class="map-status">black map</div></div><div class="map-frame-wrap"><div id="mapCanvas" class="map-canvas"></div></div>`;
+  voiceCore.appendChild(panel); const L = await ensureLeaflet();
+  mapController = { map: L.map("mapCanvas", { zoomControl: true, attributionControl: true }).setView([39.4, -84.3], 9), markers: [], is3D: false, activeLayer: null };
+  setMapMode(false);
+  const point = await geocodeAddress(location);
+  if (point) mapController.map.flyTo([point.lat, point.lon], 12, { duration: 1.3 });
+}
 
-      function createZoomLayer() {
-        removeLayer(".zoom-layer");
-        const layer = document.createElement("div");
-        layer.className = "zoom-layer";
+async function updateMapLocationInPlace(location, options = {}) {
+  if (!mapController?.map) return false;
+  if (options.foodBanks) { await renderFoodBankMarkers(options.withinTenMiles); return true; }
+  mapController.markers.forEach((m) => m.remove()); mapController.markers = [];
+  const point = await geocodeAddress(location); if (!point) return true;
+  mapController.map.flyTo([point.lat, point.lon], Math.max(6, mapController.map.getZoom() - 2), { duration: 0.6 });
+  window.setTimeout(() => mapController.map.flyTo([point.lat, point.lon], 13, { duration: 1.0 }), 620);
+  return true;
+}
 
-        const flash = document.createElement("div");
-        flash.className = "zoom-flash";
-        layer.appendChild(flash);
+async function runCommand(rawCommand = commandInput.value) {
+  const normalized = rawCommand.trim().toLowerCase(); if (!normalized) return; clearTransitionTimer();
+  const ask3D = /3d/.test(normalized) && visualMode === "field" && !!mapController?.map;
+  if (ask3D) { setMapMode(true); commandInput.value = ""; return; }
+  const ask2D = /(2d|flat|black map)/.test(normalized) && visualMode === "field" && !!mapController?.map;
+  if (ask2D) { setMapMode(false); commandInput.value = ""; return; }
 
-        const ring = document.createElement("div");
-        ring.className = "zoom-ring";
-        layer.appendChild(ring);
+  const isFoodBankRequest = /food bank|food pantry|pantry/.test(normalized);
+  const withinTenMiles = /10\s*mile/.test(normalized);
+  const mapLocation = extractMapLocation(rawCommand) || (isFoodBankRequest ? "Southwest Ohio Food Banks" : "");
+  if (mapLocation) {
+    setStatus("responding"); commandInput.value = "";
+    if (visualMode === "field" && mapController?.map) {
+      await updateMapLocationInPlace(mapLocation, { foodBanks: isFoodBankRequest, withinTenMiles });
+      return;
+    }
+    setVisualMode("zoom"); createZoomLayer();
+    transitionTimer = window.setTimeout(async () => {
+      removeLayer(".zoom-layer"); await createMapPanel(mapLocation);
+      if (isFoodBankRequest) await renderFoodBankMarkers(withinTenMiles);
+      setVisualMode("field"); transitionTimer = null;
+    }, ZOOM_PHASE_DURATION_MS);
+    return;
+  }
 
-        const burst = document.createElement("div");
-        burst.className = "zoom-core-burst";
-        layer.appendChild(burst);
+  if (normalized.includes("reset") || normalized.includes("return") || normalized.includes("back")) {
+    removeLayer(".map-panel"); if (mapController?.map) { mapController.map.remove(); mapController = null; }
+    setVisualMode("core"); setStatus("listening"); commandInput.value = ""; return;
+  }
+}
 
-        const vignette = document.createElement("div");
-        vignette.className = "zoom-vignette";
-        layer.appendChild(vignette);
+function startVoiceCommand() { const SpeechRecognition = getSpeechRecognitionConstructor(); if (!SpeechRecognition || isListeningForSpeech) return; const recognition = new SpeechRecognition(); recognition.lang = "en-US"; recognition.interimResults = false; recognition.maxAlternatives = 1; recognition.onstart = () => { isListeningForSpeech = true; voiceButton.textContent = "listening"; }; recognition.onresult = (event) => { const transcript = event.results?.[0]?.[0]?.transcript || ""; commandInput.value = transcript; runCommand(transcript); }; recognition.onend = () => { isListeningForSpeech = false; voiceButton.textContent = "voice"; }; recognition.onerror = () => { isListeningForSpeech = false; voiceButton.textContent = "voice"; }; recognition.start(); }
 
-        for (let i = 0; i < 4; i += 1) {
-          const depthRing = document.createElement("div");
-          depthRing.className = "zoom-depth-ring";
-          depthRing.style.animationDelay = `${i * 0.09}s`;
-          depthRing.style.setProperty("--ring-opacity", `${0.28 - i * 0.045}`);
-          depthRing.style.setProperty("--ring-scale", `${2.4 + i * 0.62}`);
-          layer.appendChild(depthRing);
-        }
-
-        for (let index = 0; index < PARTICLE_COUNTS.streaks; index += 1) {
-          const angle = (index / PARTICLE_COUNTS.streaks) * Math.PI * 2;
-          const radius = 18 + (index % 12) * 10;
-          const spread = 7.5 + (index % 6) * 0.7;
-          const startX = Math.cos(angle) * radius;
-          const startY = Math.sin(angle) * radius;
-          const endX = Math.cos(angle) * radius * spread;
-          const endY = Math.sin(angle) * radius * spread;
-          const rotate = (angle * 180) / Math.PI;
-          const opacity = 0.16 + (index % 5) * 0.05;
-
-          const streak = document.createElement("div");
-          streak.className = "streak";
-          streak.style.width = `${72 + (index % 6) * 32}px`;
-          streak.style.height = `${index % 7 === 0 ? 2 : 1.2}px`;
-          streak.style.animationDelay = `${(index % 14) * 0.012}s`;
-          streak.style.setProperty("--sx", `${startX}px`);
-          streak.style.setProperty("--sy", `${startY}px`);
-          streak.style.setProperty("--ex", `${endX}px`);
-          streak.style.setProperty("--ey", `${endY}px`);
-          streak.style.setProperty("--rot", `${rotate}deg`);
-          streak.style.setProperty("--o", opacity);
-          layer.appendChild(streak);
-        }
-
-        for (let index = 0; index < 54; index += 1) {
-          const angle = (index / 54) * Math.PI * 2 + (index % 3) * 0.18;
-          const startDistance = 8 + (index % 8) * 9;
-          const endDistance = 260 + (index % 12) * 34;
-          const startX = Math.cos(angle) * startDistance;
-          const startY = Math.sin(angle) * startDistance;
-          const endX = Math.cos(angle) * endDistance;
-          const endY = Math.sin(angle) * endDistance;
-          const size = 1 + (index % 4) * 0.55;
-
-          const dust = document.createElement("div");
-          dust.className = "zoom-dust";
-          dust.style.width = `${size}px`;
-          dust.style.height = `${size}px`;
-          dust.style.animationDelay = `${(index % 18) * 0.017}s`;
-          dust.style.setProperty("--sx", `${startX}px`);
-          dust.style.setProperty("--sy", `${startY}px`);
-          dust.style.setProperty("--ex", `${endX}px`);
-          dust.style.setProperty("--ey", `${endY}px`);
-          dust.style.setProperty("--o", `${0.18 + (index % 5) * 0.06}`);
-          dust.style.setProperty("--s", `${0.8 + (index % 4) * 0.18}`);
-          layer.appendChild(dust);
-        }
-
-        for (let index = 0; index < 22; index += 1) {
-          const angle = (index / 22) * Math.PI * 2 + 0.11;
-          const startDistance = 36 + (index % 6) * 15;
-          const endDistance = 330 + (index % 7) * 42;
-          const startX = Math.cos(angle) * startDistance;
-          const startY = Math.sin(angle) * startDistance;
-          const endX = Math.cos(angle) * endDistance;
-          const endY = Math.sin(angle) * endDistance;
-          const rotate = (angle * 180) / Math.PI;
-
-          const shard = document.createElement("div");
-          shard.className = "zoom-shard";
-          shard.style.width = `${90 + (index % 5) * 34}px`;
-          shard.style.animationDelay = `${0.08 + (index % 12) * 0.018}s`;
-          shard.style.setProperty("--sx", `${startX}px`);
-          shard.style.setProperty("--sy", `${startY}px`);
-          shard.style.setProperty("--ex", `${endX}px`);
-          shard.style.setProperty("--ey", `${endY}px`);
-          shard.style.setProperty("--rot", `${rotate}deg`);
-          shard.style.setProperty("--o", `${0.14 + (index % 4) * 0.055}`);
-          layer.appendChild(shard);
-        }
-
-        document.body.appendChild(layer);
-      }
-
-      function createParticleField() {
-        removeLayer(".particle-field");
-        const field = document.createElement("div");
-        field.className = "particle-field";
-
-        const ring = document.createElement("div");
-        ring.className = "field-ring";
-        field.appendChild(ring);
-
-        for (let index = 0; index < PARTICLE_COUNTS.field; index += 1) {
-          const layer = index % 5;
-          const angle = (index / PARTICLE_COUNTS.field) * Math.PI * 2 * (1.8 + layer * 0.08);
-          const distance = 34 + ((index * 31) % 260);
-          const shapeBias = 0.72 + layer * 0.08;
-          const x = Math.cos(angle) * distance * shapeBias;
-          const y = Math.sin(angle) * distance * (0.72 + (index % 4) * 0.08);
-          const size = 1.2 + (index % 5) * 0.45;
-          const opacity = 0.16 + (index % 7) * 0.055;
-
-          const particle = document.createElement("div");
-          particle.className = "field-particle";
-          particle.style.width = `${size}px`;
-          particle.style.height = `${size}px`;
-          particle.style.opacity = opacity;
-          particle.style.transform = `translate(${x}px, ${y}px)`;
-          field.appendChild(particle);
-        }
-        voiceCore.appendChild(field);
-      }
-
-      function createReassembleField() {
-        removeLayer(".reassemble-field");
-        removeLayer(".particle-field");
-        const field = document.createElement("div");
-        field.className = "reassemble-field";
-
-        for (let index = 0; index < PARTICLE_COUNTS.reassemble; index += 1) {
-          const angle = (index / PARTICLE_COUNTS.reassemble) * Math.PI * 2;
-          const distance = 180 + (index % 8) * 30;
-          const x = Math.cos(angle) * distance;
-          const y = Math.sin(angle) * distance;
-          const size = 1.4 + (index % 4) * 0.55;
-          const opacity = 0.2 + (index % 5) * 0.06;
-
-          const particle = document.createElement("div");
-          particle.className = "reassemble-particle";
-          particle.style.width = `${size}px`;
-          particle.style.height = `${size}px`;
-          particle.style.animationDelay = `${(index % 12) * 0.014}s`;
-          particle.style.setProperty("--x", `${x}px`);
-          particle.style.setProperty("--y", `${y}px`);
-          particle.style.setProperty("--o", opacity);
-          field.appendChild(particle);
-        }
-        voiceCore.appendChild(field);
-      }
-
-      function extractMapLocation(command) {
-        const text = command.trim().toLowerCase();
-        const original = command.trim();
-
-        if (text.startsWith("where is ")) {
-          return original.slice(9).replace(/[.!?]+$/g, "").trim();
-        }
-
-        if (!text.includes("map")) return "";
-
-        const prefixes = [
-          "show me a map of ",
-          "show me map of ",
-          "show map of ",
-          "show a map of ",
-          "open a map of ",
-          "open map of ",
-          "pull up a map of ",
-          "pull up map of ",
-          "display a map of ",
-          "display map of ",
-          "map of ",
-          "map for ",
-          "map to ",
-          "map in ",
-          "map near ",
-          "map around "
-        ];
-
-        for (const prefix of prefixes) {
-          if (text.startsWith(prefix)) {
-            return original.slice(prefix.length).replace(/[.!?]+$/g, "").trim();
-          }
-        }
-
-        const fallback = original
-          .split(" ")
-          .filter((word) => !["show", "me", "a", "the", "map", "of", "for", "to", "in", "near", "around", "open", "display"].includes(word.toLowerCase()))
-          .join(" ")
-          .replace(/[.!?]+$/g, "")
-          .trim();
-
-        return fallback.length > 1 ? fallback : "";
-      }
-
-      function createMapPanel(location) {
-        removeLayer(".map-panel");
-        const panel = document.createElement("div");
-        panel.className = "map-panel";
-
-        const safeLocation = location.replace(/[<>]/g, "");
-        const mapSrc = "https://maps.google.com/maps?q=" + encodeURIComponent(safeLocation) + "&z=13&output=embed";
-
-        panel.innerHTML = `
-          <div class="map-header">
-            <div>
-              <div class="map-kicker">map response</div>
-              <div class="map-title">${safeLocation}</div>
-            </div>
-            <div class="map-status">live embed</div>
-          </div>
-          <div class="map-frame-wrap">
-            <iframe title="Map of ${safeLocation}" src="${mapSrc}" loading="eager" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-          </div>
-        `;
-
-        voiceCore.appendChild(panel);
-      }
-
-      function runCommand(rawCommand = commandInput.value) {
-        const normalized = rawCommand.trim().toLowerCase();
-        if (!normalized) return;
-        clearTransitionTimer();
-
-        const mapLocation = extractMapLocation(normalized);
-        if (mapLocation) {
-          setStatus("responding");
-          setVisualMode("zoom");
-          commandInput.value = "";
-          createZoomLayer();
-
-          transitionTimer = window.setTimeout(() => {
-            removeLayer(".zoom-layer");
-            removeLayer(".particle-field");
-            createMapPanel(mapLocation);
-            setVisualMode("field");
-            transitionTimer = null;
-          }, 1250);
-          return;
-        }
-
-        if (normalized.includes("show")) {
-          setStatus("responding");
-          setVisualMode("zoom");
-          commandInput.value = "";
-          createZoomLayer();
-
-          transitionTimer = window.setTimeout(() => {
-            removeLayer(".zoom-layer");
-            createParticleField();
-            setVisualMode("field");
-            transitionTimer = null;
-          }, 1250);
-          return;
-        }
-
-        if (normalized.includes("reset") || normalized.includes("return") || normalized.includes("back")) {
-          removeLayer(".map-panel");
-          setStatus("responding");
-          setVisualMode("reassemble");
-          commandInput.value = "";
-          createReassembleField();
-
-          transitionTimer = window.setTimeout(() => {
-            removeLayer(".reassemble-field");
-            setVisualMode("core");
-            setStatus("listening");
-            transitionTimer = null;
-          }, 1050);
-          return;
-        }
-
-        setStatus(status === "responding" ? "listening" : "responding");
-        commandInput.value = "";
-      }
-
-      function getSpeechRecognitionConstructor() {
-        return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-      }
-
-      function startVoiceCommand() {
-        const SpeechRecognition = getSpeechRecognitionConstructor();
-        if (!SpeechRecognition || isListeningForSpeech) return;
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => {
-          isListeningForSpeech = true;
-          voiceButton.textContent = "listening";
-          setStatus("listening");
-        };
-
-        recognition.onresult = (event) => {
-          const transcript = event.results?.[0]?.[0]?.transcript || "";
-          commandInput.value = transcript;
-          runCommand(transcript);
-        };
-
-        recognition.onend = () => {
-          isListeningForSpeech = false;
-          voiceButton.textContent = "voice";
-        };
-
-        recognition.onerror = () => {
-          isListeningForSpeech = false;
-          voiceButton.textContent = "voice";
-        };
-
-        recognition.start();
-      }
-
-      function boot() {
-        createReactivePulse();
-        setStatus("listening");
-        setVisualMode("core");
-
-        if (!getSpeechRecognitionConstructor()) {
-          voiceButton.disabled = true;
-          voiceButton.title = "Speech recognition is not supported in this browser.";
-        }
-
-        app.addEventListener("click", toggleVoiceState);
-        sendButton.addEventListener("click", () => runCommand());
-        commandInput.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") runCommand();
-        });
-        voiceButton.addEventListener("click", startVoiceCommand);
-      }
-
-      boot();
+function boot() {
+  createReactivePulse(); setStatus("listening"); setVisualMode("core");
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition((pos) => { currentUserLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude }; }, () => {});
+  if (!getSpeechRecognitionConstructor()) { voiceButton.disabled = true; voiceButton.title = "Speech recognition is not supported in this browser."; }
+  app.addEventListener("click", toggleVoiceState); sendButton.addEventListener("click", () => runCommand()); commandInput.addEventListener("keydown", (event) => { if (event.key === "Enter") runCommand(); }); voiceButton.addEventListener("click", startVoiceCommand);
+}
+boot();
