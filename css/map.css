@@ -1,0 +1,380 @@
+/* ==========================================================================
+   Map panel, markers, legend and the text results list (the non-visual
+   equivalent of the map - screen reader and keyboard users get the same data).
+   ========================================================================== */
+
+/* Anchored top and bottom rather than centred, so it always clears the top bar
+   above and the toast stack + command bar below at any viewport height. */
+.map-panel {
+  position: fixed;
+  z-index: 25;
+  left: 50%;
+  top: 78px;
+  bottom: 216px;
+  display: flex;
+  width: min(1240px, calc(100vw - 32px));
+  min-height: 240px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 0 100px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  animation: map-panel-enter 0.75s var(--ease-out) both;
+}
+
+@keyframes map-panel-enter {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.96); filter: blur(10px); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); filter: blur(0); }
+}
+
+.map-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+}
+
+.map-kicker {
+  margin-bottom: 4px;
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.map-title {
+  color: var(--text-strong);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.map-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-status {
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.map-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.map-frame-wrap {
+  position: relative;
+  min-height: 220px;
+  background: #050505;
+}
+
+.map-frame-wrap::after {
+  content: "";
+  position: absolute;
+  z-index: 500;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--white-08);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.55);
+}
+
+.map-canvas {
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.map-sidebar {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.map-sidebar-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  color: var(--text-faint);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.result-list {
+  margin: 0;
+  min-height: 0;
+  flex: 1;
+  list-style: none;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.result-item {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.result-item + .result-item {
+  margin-top: 4px;
+}
+
+.result-item:hover,
+.result-item:focus-within {
+  border-color: var(--border);
+  background: var(--white-05);
+}
+
+.result-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result-name {
+  display: block;
+  color: var(--text-strong);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.result-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.result-empty {
+  padding: 18px 16px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* --- Status badge: colour + glyph + words, never colour alone ------------- */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status-badge::before {
+  content: attr(data-glyph);
+  font-size: 0.8em;
+}
+
+.status-badge[data-status="open"] { color: var(--status-open); }
+.status-badge[data-status="closed"] { color: var(--status-closed); }
+.status-badge[data-status="appointment"] { color: var(--status-appointment); }
+.status-badge[data-status="unknown"] { color: var(--status-unknown); }
+
+/* --- Legend --------------------------------------------------------------- */
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.legend-swatch {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Leaflet overrides ---------------------------------------------------- */
+
+.leaflet-container {
+  background: #000;
+  font: inherit;
+}
+
+/* Turns the standard OSM raster into the dark basemap. Applied to the tile
+   layer only - markers live in a separate pane, so palette colours survive.
+   Greyscale is deliberate: the basemap then carries no colour meaning at all,
+   which leaves the status palette as the only colour on screen. */
+.basemap-inverted {
+  filter: invert(1) grayscale(1) brightness(0.78) contrast(1.15);
+}
+
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.78) !important;
+  color: var(--text-muted) !important;
+  font-size: 10px;
+}
+
+.leaflet-control-attribution a {
+  color: var(--accent) !important;
+}
+
+.leaflet-bar a {
+  background: #0a0a0a !important;
+  border-color: var(--border) !important;
+  color: var(--text-strong) !important;
+}
+
+.leaflet-bar a:hover {
+  background: #1c1c1c !important;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.leaflet-popup-content a {
+  color: var(--accent);
+}
+
+.popup-name {
+  margin-bottom: 4px;
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--text-muted);
+}
+
+.marker-icon {
+  display: grid;
+  place-items: center;
+}
+
+.marker-icon svg {
+  overflow: visible;
+  filter: drop-shadow(0 0 3px var(--marker-halo));
+}
+
+.marker-label {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: max-content;
+  max-width: 150px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.82);
+  padding: 2px 6px;
+  color: var(--text-strong);
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.marker-label {
+  display: none;
+}
+
+/* Labels only once the map is zoomed enough for them not to collide; below
+   that the text list beside the map is the readable alternative. */
+:root[data-marker-labels="always"] .map-panel[data-labels-fit="true"] .marker-label {
+  display: block;
+}
+
+.leaflet-marker-icon:hover .marker-label,
+.leaflet-marker-icon:focus .marker-label {
+  display: block;
+  z-index: 1000;
+}
+
+.cluster-icon {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.82);
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.45);
+}
+
+/* --- Narrow screens: stack the map and the list --------------------------- */
+
+@media (max-width: 900px) {
+  .map-panel {
+    width: calc(100vw - 16px);
+    top: 58px;
+    bottom: 196px;
+    border-radius: 18px;
+  }
+
+  .map-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(160px, 1fr) minmax(0, 1fr);
+  }
+
+  .map-sidebar {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-height: 620px) {
+  .map-panel {
+    top: 62px;
+    bottom: 150px;
+  }
+}

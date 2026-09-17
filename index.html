@@ -2,18 +2,57 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Firus Voice UI</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="FIRUS voice interface: find food banks near you on an accessible map, with colour-vision, contrast and motion settings."
+    />
+    <title>FIRUS Voice UI</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23fff' stroke-width='1.5' opacity='.5'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23fff'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/core.css" />
+    <link rel="stylesheet" href="css/field.css" />
+    <link rel="stylesheet" href="css/map.css" />
+    <link rel="stylesheet" href="css/panels.css" />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
+    <link rel="preconnect" href="https://nominatim.openstreetmap.org" />
   </head>
   <body>
-    <main id="app" class="app">
-      <div class="background-glow"></div>
-      <div class="background-grid"></div>
+    <a class="skip-link" href="#commandInput">Skip to the command bar</a>
 
-      <section class="stage">
+    <main id="app" class="app">
+      <div class="background-glow" aria-hidden="true"></div>
+      <div class="background-grid" aria-hidden="true"></div>
+
+      <div class="top-bar" data-interactive="true">
+        <button
+          type="button"
+          class="chip-button"
+          id="helpButton"
+          aria-expanded="false"
+          aria-controls="helpPanel"
+        >
+          Commands
+        </button>
+        <button
+          type="button"
+          class="chip-button"
+          id="settingsButton"
+          aria-expanded="false"
+          aria-controls="settingsPanel"
+        >
+          <span aria-hidden="true">&#9673;</span> Accessibility
+        </button>
+      </div>
+
+      <section class="stage" aria-label="FIRUS core">
         <div class="voice-core" id="voiceCore">
-          <div class="core-shell" id="coreShell">
+          <div class="core-shell" id="coreShell" aria-hidden="true">
             <div class="reactive-pulse" id="reactivePulse" hidden></div>
             <div class="outer-orb-ring"></div>
             <div class="dashed-ring"></div>
@@ -36,14 +75,43 @@
         </div>
       </section>
 
-      <div class="command-input" data-command-ui="true">
+      <div class="toast-stack" id="toastStack" aria-hidden="true"></div>
+      <p class="sr-only" id="liveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
+
+      <div class="command-input" data-interactive="true">
+        <label class="sr-only" for="commandInput">Command</label>
         <div class="command-shell">
-          <input id="commandInput" placeholder='Type "show" to enter particle field...' autocomplete="off" />
-          <button class="ghost-button" id="voiceButton" type="button">voice</button>
+          <input
+            id="commandInput"
+            name="command"
+            type="text"
+            placeholder="Try &quot;food banks near me&quot;, &quot;show&quot;, or &quot;help&quot;"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            aria-describedby="commandHint"
+          />
+          <button class="ghost-button" id="voiceButton" type="button" aria-pressed="false">
+            voice
+          </button>
           <button class="send-button" id="sendButton" type="button">send</button>
         </div>
+        <p class="command-hint" id="commandHint">
+          Press <kbd>/</kbd> to focus, <kbd>?</kbd> for commands, <kbd>Esc</kbd> to go back.
+        </p>
       </div>
+
+      <div class="panel-backdrop" id="panelBackdrop" hidden></div>
+      <div id="panelHost"></div>
     </main>
-    <script src="script.js"></script>
+
+    <noscript>
+      <p style="padding: 24px; color: #fff">
+        FIRUS needs JavaScript to run. The food bank directory it uses is listed in
+        <code>src/data/food-banks.js</code>.
+      </p>
+    </noscript>
+
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>
