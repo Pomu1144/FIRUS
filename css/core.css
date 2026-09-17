@@ -1,0 +1,293 @@
+/* ==========================================================================
+   The FIRUS voice core (the orb) - now sized from --core-size so it scales
+   with the viewport instead of being pinned to 620px.
+   ========================================================================== */
+
+.voice-core {
+  position: relative;
+  display: flex;
+  width: var(--core-size);
+  height: var(--core-size);
+  align-items: center;
+  justify-content: center;
+}
+
+.core-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+  transition:
+    opacity 0.78s var(--ease-out),
+    filter 0.78s var(--ease-out),
+    transform 0.78s var(--ease-out);
+}
+
+.core-shell.hidden-for-field,
+.core-shell.hidden-for-zoom {
+  opacity: 0;
+  filter: blur(12px);
+  transform: scale(0.84);
+  pointer-events: none;
+}
+
+.core-shell.reassembling {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+  animation: core-reassemble 1.05s var(--ease-out) both;
+}
+
+.outer-orb-ring {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid var(--white-10);
+  border-radius: 999px;
+  background: conic-gradient(from 90deg, transparent, rgba(255, 255, 255, 0.08), transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: rotate-slow 42s linear infinite, ambient-scale 5.8s ease-in-out infinite;
+}
+
+.responding .outer-orb-ring {
+  animation-duration: 24s, 3.6s;
+}
+
+.dashed-ring {
+  position: absolute;
+  inset: 14.5%;
+  border: 1px dashed var(--white-12);
+  border-radius: 999px;
+  animation: rotate-reverse 48s linear infinite;
+}
+
+.responding .dashed-ring {
+  animation-duration: 30s;
+}
+
+.ambient-ring {
+  position: absolute;
+  inset: 26%;
+  border: 1px solid var(--white-10);
+  border-radius: 999px;
+  animation: ambient-ring 4.8s ease-in-out infinite;
+}
+
+.responding .ambient-ring {
+  animation-name: responding-ambient-ring;
+  animation-duration: 2.8s;
+}
+
+.scan-line-vertical,
+.scan-line-horizontal {
+  position: absolute;
+  opacity: 0.08;
+}
+
+.scan-line-vertical {
+  height: 76%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--white-16), transparent);
+  animation: rotate-slow 28s linear infinite, scan-opacity 5s ease-in-out infinite;
+}
+
+.scan-line-horizontal {
+  width: 76%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.14), transparent);
+  animation: rotate-reverse 34s linear infinite, scan-opacity 5.5s ease-in-out infinite;
+}
+
+.responding .scan-line-vertical {
+  animation-duration: 16s, 3.2s;
+}
+
+.responding .scan-line-horizontal {
+  animation-duration: 20s, 3.6s;
+}
+
+.soft-glow {
+  position: absolute;
+  width: 52%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  filter: blur(48px);
+  animation: soft-glow 5.2s ease-in-out infinite;
+}
+
+.responding .soft-glow {
+  animation-name: responding-soft-glow;
+  animation-duration: 3.2s;
+}
+
+.inner-core {
+  position: relative;
+  display: grid;
+  width: 46.5%;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--white-12);
+  border-radius: 999px;
+  background: black;
+  box-shadow: 0 0 120px rgba(255, 255, 255, 0.08);
+  animation: core-float 5.8s ease-in-out infinite;
+}
+
+.responding .inner-core {
+  animation-name: responding-core-float;
+  animation-duration: 3s;
+}
+
+.sweep-highlight {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.02) 38%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.02) 62%, transparent 100%);
+  animation: sweep 10s ease-in-out infinite;
+}
+
+.responding .sweep-highlight {
+  animation-duration: 5.8s;
+}
+
+.inner-rotor {
+  position: absolute;
+  inset: 9.7%;
+  border: 1px solid var(--white-10);
+  border-radius: 999px;
+  background: conic-gradient(from 180deg, transparent, rgba(255, 255, 255, 0.08), transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: rotate-slow 44s linear infinite;
+}
+
+.responding .inner-rotor {
+  animation-name: rotate-reverse;
+  animation-duration: 26s;
+}
+
+.center-pulse-ring {
+  position: absolute;
+  width: 55.5%;
+  aspect-ratio: 1;
+  border: 1px solid var(--white-18);
+  border-radius: 999px;
+  animation: center-ring 4.8s ease-in-out infinite;
+}
+
+.responding .center-pulse-ring {
+  animation-name: responding-center-ring;
+  animation-duration: 2.35s;
+}
+
+.center-orb {
+  position: relative;
+  width: 33.3%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.35), rgba(200, 200, 200, 0.22) 28%, rgba(40, 40, 40, 0.94) 64%, rgb(0, 0, 0) 100%);
+  box-shadow: 0 0 52px rgba(255, 255, 255, 0.12);
+  animation: center-orb 4.8s ease-in-out infinite;
+}
+
+.responding .center-orb {
+  animation-name: responding-center-orb;
+  animation-duration: 2.4s;
+}
+
+.center-orb::after {
+  content: "";
+  position: absolute;
+  inset: 21%;
+  border: 1px solid var(--white-12);
+  border-radius: 999px;
+  animation: inner-center-ring 5s ease-in-out infinite;
+}
+
+.responding .center-orb::after {
+  animation-name: responding-inner-center-ring;
+  animation-duration: 2.6s;
+}
+
+.brand {
+  position: absolute;
+  bottom: 8%;
+  width: 100%;
+  text-align: center;
+}
+
+.brand-name {
+  font-size: clamp(0.95rem, 3vmin, 1.3rem);
+  font-weight: 600;
+  letter-spacing: 0.46em;
+  text-indent: 0.46em;
+  color: var(--text-strong);
+}
+
+.brand-status {
+  margin-top: 8px;
+  font-size: clamp(0.66rem, 1.9vmin, 0.78rem);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.reactive-pulse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.reactive-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid var(--white-16);
+  border-radius: 999px;
+  opacity: 0;
+  animation: reactive-ring 2.6s ease-out infinite;
+}
+
+.reactive-ring:nth-child(1) {
+  width: 53%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.reactive-ring:nth-child(2) {
+  width: 65%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  animation-delay: 0.55s;
+}
+
+.reactive-conic {
+  position: absolute;
+  inset: 3%;
+  border-radius: 999px;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 255, 255, 0.14) 34deg, transparent 78deg, transparent 142deg, rgba(255, 255, 255, 0.08) 180deg, transparent 226deg, transparent 360deg);
+  opacity: 0.6;
+  animation: rotate-slow 18s linear infinite;
+}
+
+@keyframes rotate-slow { to { transform: rotate(360deg); } }
+@keyframes rotate-reverse { to { transform: rotate(-360deg); } }
+@keyframes ambient-scale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.01); } }
+@keyframes ambient-ring { 0%, 100% { transform: scale(1); opacity: 0.05; } 50% { transform: scale(1.025); opacity: 0.13; } }
+@keyframes responding-ambient-ring { 0%, 100% { transform: scale(1); opacity: 0.08; } 50% { transform: scale(1.07); opacity: 0.28; } }
+@keyframes scan-opacity { 0%, 100% { opacity: 0.03; } 50% { opacity: 0.14; } }
+@keyframes soft-glow { 0%, 100% { transform: scale(0.96); opacity: 0.06; } 50% { transform: scale(1.035); opacity: 0.14; } }
+@keyframes responding-soft-glow { 0%, 100% { transform: scale(0.96); opacity: 0.1; } 50% { transform: scale(1.08); opacity: 0.24; } }
+@keyframes core-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.1px) scale(1.006); } }
+@keyframes responding-core-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.8px) scale(1.014); } }
+@keyframes sweep { from { transform: translateX(-135%); } to { transform: translateX(135%); } }
+@keyframes center-ring { 0%, 100% { transform: scale(0.96); opacity: 0.04; } 50% { transform: scale(1.06); opacity: 0.13; } }
+@keyframes responding-center-ring { 0%, 100% { transform: scale(0.94); opacity: 0.07; } 50% { transform: scale(1.18); opacity: 0.3; } }
+@keyframes center-orb { 0%, 100% { transform: scale(1); filter: brightness(0.98); } 50% { transform: scale(1.025); filter: brightness(1.04); } }
+@keyframes responding-center-orb { 0%, 100% { transform: scale(1); filter: brightness(0.98); } 50% { transform: scale(1.1); filter: brightness(1.14); } }
+@keyframes inner-center-ring { 0%, 100% { transform: scale(1); opacity: 0.05; } 50% { transform: scale(1.06); opacity: 0.1; } }
+@keyframes responding-inner-center-ring { 0%, 100% { transform: scale(0.94); opacity: 0.05; } 50% { transform: scale(1.16); opacity: 0.2; } }
+@keyframes reactive-ring { 0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } 42% { opacity: 0.26; } 100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; } }
+@keyframes core-reassemble { 0% { opacity: 0; filter: blur(14px); transform: scale(0.78); } 45% { opacity: 0.18; filter: blur(6px); transform: scale(0.9); } 100% { opacity: 1; filter: blur(0); transform: scale(1); } }

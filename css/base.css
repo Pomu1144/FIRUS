@@ -1,0 +1,339 @@
+/* ==========================================================================
+   Reset, app shell, command bar, notifications
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: #000;
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+/* A single, consistent, always-visible keyboard focus treatment. */
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  top: 8px;
+  left: 50%;
+  transform: translate(-50%, -160%);
+  border-radius: 999px;
+  background: var(--accent);
+  padding: 10px 18px;
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+.app {
+  position: relative;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+}
+
+.background-glow,
+.background-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.background-glow {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.055), transparent 30%),
+    linear-gradient(180deg, #000, #050505 48%, #000);
+  transform-origin: center;
+}
+
+.background-grid {
+  opacity: 0.03;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  transform-origin: center;
+}
+
+:root[data-contrast="high"] .background-grid {
+  opacity: 0.08;
+}
+
+.stage {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  min-height: 100svh;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  transform-origin: center;
+}
+
+/* --- Top bar -------------------------------------------------------------- */
+
+.top-bar {
+  position: absolute;
+  z-index: 45;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 9px 14px;
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: var(--white-10);
+  border-color: var(--border-strong);
+}
+
+.chip-button[aria-expanded="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* --- Command bar ---------------------------------------------------------- */
+
+.command-input {
+  position: absolute;
+  z-index: 40;
+  bottom: 28px;
+  left: 50%;
+  width: min(680px, calc(100vw - 32px));
+  transform: translateX(-50%);
+}
+
+.command-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 8px;
+  box-shadow: 0 0 60px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.command-shell:focus-within {
+  border-color: var(--border-strong);
+}
+
+.command-shell input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 12px 16px;
+  color: var(--text-strong);
+  font-size: 0.9rem;
+}
+
+.command-shell input::placeholder {
+  color: var(--text-faint);
+}
+
+.command-hint {
+  margin: 10px auto 0;
+  max-width: 90%;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.ghost-button,
+.send-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ghost-button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.ghost-button:hover:not(:disabled) {
+  background: var(--white-10);
+}
+
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ghost-button[data-recording="true"] {
+  border-color: var(--status-open);
+  color: var(--status-open);
+}
+
+.send-button {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.send-button:hover {
+  filter: brightness(1.1);
+}
+
+/* --- Toasts / announcements ---------------------------------------------- */
+
+.toast-stack {
+  position: absolute;
+  z-index: 60;
+  bottom: 118px;
+  left: 50%;
+  display: flex;
+  width: min(560px, calc(100vw - 32px));
+  flex-direction: column;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: var(--surface-raised);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  animation: toast-in calc(0.3s * var(--motion-scale)) var(--ease-out) both;
+}
+
+.toast[data-tone="error"] {
+  border-left-color: var(--status-closed);
+}
+
+.toast[data-tone="success"] {
+  border-left-color: var(--status-open);
+}
+
+.toast[data-tone="info"] {
+  border-left-color: var(--accent);
+}
+
+/* The leading glyph keeps tone legible without relying on the border colour. */
+.toast::before {
+  content: attr(data-glyph);
+  flex: none;
+  font-weight: 700;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .command-shell {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .ghost-button,
+  .send-button {
+    padding: 10px 11px;
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+  }
+
+  .command-shell input {
+    padding: 10px 10px;
+  }
+
+  .top-bar {
+    top: 10px;
+    right: 10px;
+  }
+
+  .chip-button {
+    padding: 8px 11px;
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+  }
+}
